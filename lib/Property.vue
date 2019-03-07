@@ -27,8 +27,8 @@
         :clearable="!required"
         prepend-icon="event"
         readonly >
-        <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-          <v-icon slot="activator">info</v-icon>
+        <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+          <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
           <div class="vjsf-tooltip" v-html="htmlDescription" />
         </v-tooltip>
       </v-text-field>
@@ -47,7 +47,7 @@
              :rules="rules"
              :disabled="disabled">
       <v-tooltip v-if="fullSchema.description" slot="append" left>
-        <v-icon slot="activator">info</v-icon>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
       &nbsp;&nbsp;
@@ -70,8 +70,8 @@
               :disabled="disabled"
               :clearable="!required"
               :multiple="fullSchema.type === 'array'" >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-select>
@@ -88,8 +88,8 @@
               :rules="rules"
               :clearable="!required"
               :multiple="fullSchema.type === 'array'" >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-select>
@@ -110,8 +110,8 @@
               :clearable="!required"
               :loading="loading"
               :multiple="fullSchema.type === 'array'">
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-select>
@@ -135,8 +135,8 @@
                     :placeholder="options.searchMessage"
                     :loading="loading"
                     :multiple="fullSchema.type === 'array'" >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-autocomplete>
@@ -150,9 +150,10 @@
                 :required="required"
                 :rules="rules"
                 box
+                
     >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-textarea>
@@ -166,9 +167,10 @@
                   :required="required"
                   :rules="rules"
                   type="password"
+                  outline
     >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-text-field>
@@ -181,9 +183,10 @@
                   :disabled="disabled"
                   :required="required"
                   :rules="rules"
+                  outline
     >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-text-field>
@@ -199,9 +202,10 @@
                   :disabled="disabled"
                   :required="required"
                   :rules="rules"
-                  type="number">
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+                  type="number"
+                  outline >
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-text-field>
@@ -213,9 +217,9 @@
                 :name="fullKey"
                 :disabled="disabled"
                 :required="required"
-                :rules="rules" >
+                :rules="rules">
       <v-tooltip v-if="fullSchema.description" slot="append" left>
-        <v-icon slot="activator">info</v-icon>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-checkbox>
@@ -233,8 +237,8 @@
       multiple
       append-icon=""
     >
-      <v-tooltip v-if="fullSchema.description" slot="append-outer" left>
-        <v-icon slot="activator">info</v-icon>
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
       <template slot="selection" slot-scope="data">
@@ -323,8 +327,8 @@
             :rules="oneOfRules"
             item-text="title"
             return-object>
-            <v-tooltip v-if="oneOfConstProp && oneOfConstProp.description" slot="append-outer" left>
-              <v-icon slot="activator">info</v-icon>
+            <v-tooltip v-if="oneOfConstProp && oneOfConstProp.description" slot="prepend-inner" left>
+              <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
               <div class="vjsf-tooltip" v-html="oneOfConstProp.htmlDescription"/>
             </v-tooltip>
           </v-select>
@@ -377,7 +381,7 @@
         </v-btn>
         <v-spacer/>
         <v-tooltip v-if="fullSchema.description" left>
-          <v-icon slot="activator">info</v-icon>
+          <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
           <div class="vjsf-tooltip" v-html="htmlDescription"/>
         </v-tooltip>
       </v-layout>

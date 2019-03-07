@@ -1,13 +1,14 @@
 # vuetify-jsonschema-form
+NOTE:
+This is a forked from https://github.com/koumoul-dev/vuetify-jsonschema-form
 
 Generate forms for the [vuetify](https://vuetifyjs.com/en/) UI library (vuejs) based on annotated JSON schemas.
 
-For a view of all the functionalities check the [demo](https://koumoul-dev.github.io/vuetify-jsonschema-form/latest/).
 
 ## Installation
 
 ```bash
-npm i --save @koumoul/vuetify-jsonschema-form
+npm i --save json-schema-for-vuetify
 ```
 
 ## Usage
@@ -28,7 +29,7 @@ import axios from 'axios'
 import VueAxios from 'vue-axios'
 import Swatches from 'vue-swatches'
 import 'vue-swatches/dist/vue-swatches.min.css'
-import VJsonschemaForm from '@koumoul/vuetify-jsonschema-form'
+import VJsonschemaForm from 'json-schema-for-vuetify'
 
 Vue.use(Vuetify)
 Vue.use(VueAxios, axios)
