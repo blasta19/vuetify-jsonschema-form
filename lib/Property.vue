@@ -69,7 +69,8 @@
               :rules="rules"
               :disabled="disabled"
               :clearable="!required"
-              :multiple="fullSchema.type === 'array'" >
+              :multiple="fullSchema.type === 'array'" 
+              outline >
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -87,7 +88,8 @@
               :disabled="disabled"
               :rules="rules"
               :clearable="!required"
-              :multiple="fullSchema.type === 'array'" >
+              :multiple="fullSchema.type === 'array'" 
+              outline >
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -109,7 +111,8 @@
               :return-object="(fullSchema.type === 'array' && fullSchema.items.type === 'object') || fullSchema.type === 'object'"
               :clearable="!required"
               :loading="loading"
-              :multiple="fullSchema.type === 'array'">
+              :multiple="fullSchema.type === 'array'"
+              outline >
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -326,7 +329,8 @@
             :clearable="!oneOfRequired"
             :rules="oneOfRules"
             item-text="title"
-            return-object>
+            return-object 
+            outline >
             <v-tooltip v-if="oneOfConstProp && oneOfConstProp.description" slot="prepend-inner" left>
               <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
               <div class="vjsf-tooltip" v-html="oneOfConstProp.htmlDescription"/>
