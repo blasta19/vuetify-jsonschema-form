@@ -2,7 +2,6 @@
   <div v-if="fullSchema" class="vjsf-property">
     <!-- Hide const ? Or make a readonly field -->
     <template v-if="fullSchema.const !== undefined" />
-
     <!-- explicitly hide this field -->
     <template v-if="fullSchema['x-display'] === 'hidden'" />
 
@@ -118,7 +117,28 @@
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-select>
-
+    <!-- Select field on an store object supplied -->
+    <v-select v-else-if="fullSchema['storeData']"
+              :items="store[fullSchema['storeData']].map(i => ({text: JSON.parse(i[fullSchema['text']]).name, value: i[fullSchema['key']]}))"
+              v-model="modelWrapper[modelKey]"
+              :name="fullKey"
+              :label="label"
+              :no-data-text="options.noDataMessage"
+              :disabled="disabled"
+              :required="required"
+              :rules="rules"
+              :item-text="items"
+              :item-value="itemKey"
+              :return-object="(fullSchema.type === 'array' && fullSchema.items.type === 'object') || fullSchema.type === 'object'"
+              :clearable="!required"
+              :loading="loading"
+              :multiple="fullSchema.type === 'array'"
+              outline >
+      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
+        <div class="vjsf-tooltip" v-html="htmlDescription" />
+      </v-tooltip>
+    </v-select>
     <!-- auto-complete field on an ajax response with query -->
     <v-autocomplete v-else-if="fromUrlWithQuery"
                     :items="selectItems"
@@ -276,6 +296,7 @@
                     :parent-key="fullKey + '.'"
                     :required="!!(fullSchema.required && fullSchema.required.includes(childProp.key))"
                     :options="options"
+                    :store="store"
                     @error="e => $emit('error', e)"
           />
 
@@ -431,7 +452,7 @@ const md = require('markdown-it')()
 
 export default {
   name: 'Property',
-  props: ['schema', 'modelWrapper', 'modelRoot', 'modelKey', 'parentKey', 'required', 'options'],
+  props: ['schema', 'modelWrapper', 'modelRoot', 'modelKey', 'parentKey', 'required', 'options', 'store'],
   data() {
     return {
       ready: false,

@@ -1,14 +1,16 @@
 <template lang="html">
-  <property
+<div>  <property
     v-if="!!resolvedSchema"
     :schema="resolvedSchema"
     :model-root="modelWrapper.root"
     :model-wrapper="modelWrapper"
     :options="fullOptions"
+    :store="store"
     model-key="root"
     parent-key=""
     @error="e => $emit('error', e)"
   />
+  </div>
 </template>
 
 <script>
@@ -18,7 +20,7 @@ import colors from './colors'
 export default {
   name: 'VJsonschemaForm',
   components: {Property},
-  props: ['schema', 'model', 'options'],
+  props: ['schema', 'model', 'options','store'],
   data() {
     return {modelWrapper: {root: this.model}}
   },
