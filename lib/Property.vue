@@ -1,5 +1,5 @@
 <template lang="html">
-  <div v-if="fullSchema" class="vjsf-property">
+  <v-flex v-if="fullSchema['x-display'] !== 'hidden'" >
     <!-- Hide const ? Or make a readonly field -->
     <template v-if="fullSchema.const !== undefined" />
     <!-- explicitly hide this field -->
@@ -8,14 +8,12 @@
     <!-- Date picker -->
     <v-menu v-else-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format)" ref="menu" :close-on-content-click="false" v-model="menu"
             :nudge-right="40"
-            :return-value.sync="modelWrapper[modelKey]"
             :disabled="disabled"
             lazy
             transition="scale-transition"
             offset-y
             full-width
-            min-width="290px"
-    >
+            min-width="290px">
       <v-text-field
         slot="activator"
         v-model="modelWrapper[modelKey]"
@@ -24,17 +22,15 @@
         :required="required"
         :rules="rules"
         :clearable="!required"
-        prepend-icon="event"
-        readonly >
+        prepend-inner-icon="event"
+        readonly
+        outline>
         <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
           <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
           <div class="vjsf-tooltip" v-html="htmlDescription" />
         </v-tooltip>
       </v-text-field>
-      <v-date-picker v-model="modelWrapper[modelKey]" no-title scrollable>
-        <v-spacer/>
-        <v-btn flat color="primary" @click="menu = false">Cancel</v-btn>
-        <v-btn flat color="primary" @click="$refs.menu.save(modelWrapper[modelKey])">OK</v-btn>
+      <v-date-picker v-model="modelWrapper[modelKey]" @input="menu = false" no-title scrollable>
       </v-date-picker>
     </v-menu>
 
@@ -119,7 +115,7 @@
     </v-select>
     <!-- Select field on an store object supplied -->
     <v-select v-else-if="fullSchema['storeData']"
-              :items="store[fullSchema['storeData']].map(i => ({text: JSON.parse(i[fullSchema['text']]).name, value: i[fullSchema['key']]}))"
+              :items="store[fullSchema['storeData']].map(i => ({text: i[fullSchema['text']], value: i[fullSchema['key']]}))"
               v-model="modelWrapper[modelKey]"
               :name="fullKey"
               :label="label"
@@ -286,7 +282,7 @@
 
       <v-slide-y-transition>
 
-        <div v-show="!foldable || !folded">
+        <v-layout row wrap v-show="!foldable || !folded">
           <p v-if="fullSchema.description">{{ fullSchema.description }}</p>
           <property v-for="childProp in fullSchema.properties" :key="childProp.key"
                     :schema="childProp"
@@ -369,7 +365,7 @@
               @error="e => $emit('error', e)"
             />
           </template>
-        </div>
+        </v-layout>
       </v-slide-y-transition>
     </div>
 
@@ -443,7 +439,7 @@
     </div>
 
     <p v-else-if="options.debug">Unsupported type "{{ fullSchema.type }}" - {{ fullSchema }}</p>
-  </div>
+  </v-flex>
 </template>
 
 <script>

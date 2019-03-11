@@ -1,5 +1,6 @@
 <template lang="html">
-<div>  <property
+<v-container fluid class="p-1 pt-4">
+<property
     v-if="!!resolvedSchema"
     :schema="resolvedSchema"
     :model-root="modelWrapper.root"
@@ -10,7 +11,7 @@
     parent-key=""
     @error="e => $emit('error', e)"
   />
-  </div>
+  </v-container>
 </template>
 
 <script>
