@@ -16,7 +16,7 @@ npm i --save json-schema-for-vuetify
 ```html
 <template>
   <v-form v-model="formValid">
-    <v-jsonschema-form v-if="schema" :schema="schema" :model="dataObject" :options="options" @error="showError" />
+    <v-jsonschema-form v-if="schema" :schema="schema" :model="dataObject" :options="options" @error="showError" @change="showChange" @input="showInput" />
   </v-form>
 </template>
 
@@ -54,6 +54,12 @@ export default {
   methods: {
     showError(err) {
       window.alert(err)
+    },
+    change(e) {
+      console.log('"change" event', e)
+    },
+    input(e) {
+      console.log('"input" event', e)
     }
   }
 }

@@ -1,12 +1,8 @@
-<template lang="html">
-  <v-flex v-if="fullSchema['x-display'] !== 'hidden'" >
-    <!-- Hide const ? Or make a readonly field -->
-    <template v-if="fullSchema.const !== undefined" />
-    <!-- explicitly hide this field -->
-    <template v-if="fullSchema['x-display'] === 'hidden'" />
-
+<template>
+  <!-- Hide const ? Or make a readonly field -->
+  <v-flex v-if="fullSchema && fullSchema.const === undefined && fullSchema['x-display'] !== 'hidden'"  :class="fullSchema['x-grid'] ? fullSchema['x-grid'] : 'xs12'">
     <!-- Date picker -->
-    <v-menu v-else-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format)" ref="menu" :close-on-content-click="false" v-model="menu"
+    <v-menu v-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format)" ref="menu" :close-on-content-click="false" v-model="menu"
             :nudge-right="40"
             :disabled="disabled"
             lazy
@@ -51,31 +47,38 @@
         :disabled="disabled"
         :colors="options.colors"
         :trigger-style="{width:'36px', height:'36px'}"
-        shapes="circles" />
+        shapes="circles"
+        @input="input();change()"/>
     </v-input>
 
     <!-- Select field based on an enum (array or simple value) -->
-    <v-select v-else-if="(fullSchema.type === 'array' && fullSchema.items.enum) || fullSchema.enum"
-              :items="fullSchema.type === 'array' ? fullSchema.items.enum : fullSchema.enum"
-              v-model="modelWrapper[modelKey]"
-              :name="fullKey"
-              :label="label"
-              :required="required"
-              :rules="rules"
-              :disabled="disabled"
-              :clearable="!required"
-              :multiple="fullSchema.type === 'array'" 
-              outline >
-      <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
-        <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
-        <div class="vjsf-tooltip" v-html="htmlDescription" />
-      </v-tooltip>
-    </v-select>
+    <template v-else-if="(fullSchema.type === 'array' && fullSchema.items.enum) || fullSchema.enum">
+      <!--{{ selectItems }}<br>
+      {{ modelWrapper[modelKey] }}-->
+      <v-select
+        :items="selectItems"
+        v-model="modelWrapper[modelKey]"
+        :name="fullKey"
+        :label="label"
+        :required="required"
+        :rules="rules"
+        :disabled="disabled"
+        :clearable="!required"
+        :multiple="fullSchema.type === 'array'"
+        @change="change"
+        @input="input"
+        outline>
+        <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
+          <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
+          <div class="vjsf-tooltip" v-html="htmlDescription" />
+        </v-tooltip>
+      </v-select>
+    </template>
 
     <!-- Select field based on a oneOf on a simple type (array or simple value) -->
     <!-- cf https://github.com/mozilla-services/react-jsonfullSchema-form/issues/532 -->
-    <v-select v-else-if="(fullSchema.type === 'array' && ['string', 'integer', 'number'].includes(fullSchema.items.type) && fullSchema.items.oneOf) || (['string', 'integer', 'number'].includes(fullSchema.type) && fullSchema.oneOf)"
-              :items="(fullSchema.type === 'array' ? fullSchema.items : fullSchema).oneOf.map(item => ({value: item.const || (item.enum && item.enum[0]), text: item.title}))"
+    <v-select v-else-if="oneOfSelect"
+              :items="selectItems"
               v-model="modelWrapper[modelKey]"
               :name="fullKey"
               :label="label"
@@ -83,8 +86,12 @@
               :disabled="disabled"
               :rules="rules"
               :clearable="!required"
-              :multiple="fullSchema.type === 'array'" 
-              outline >
+              :multiple="fullSchema.type === 'array'"
+              :item-text="itemTitle"
+              :item-value="itemKey"
+              @change="change"
+              @input="input"
+              outline>
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -107,7 +114,7 @@
               :clearable="!required"
               :loading="loading"
               :multiple="fullSchema.type === 'array'"
-              outline >
+                  outline >
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -129,7 +136,9 @@
               :clearable="!required"
               :loading="loading"
               :multiple="fullSchema.type === 'array'"
-              outline >
+              outline 
+              @change="change"
+              @input="input">
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -153,7 +162,9 @@
                     :filter="() => true"
                     :placeholder="options.searchMessage"
                     :loading="loading"
-                    :multiple="fullSchema.type === 'array'" >
+                    :multiple="fullSchema.type === 'array'"
+                    @change="change"
+                    @input="input">
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -169,8 +180,9 @@
                 :required="required"
                 :rules="rules"
                 box
-                
-    >
+                @change="change"
+                @input="input"
+                outline>
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -186,8 +198,9 @@
                   :required="required"
                   :rules="rules"
                   type="password"
-                  outline
-    >
+                  @change="change"
+                  @input="input"
+                  outline>
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -202,8 +215,9 @@
                   :disabled="disabled"
                   :required="required"
                   :rules="rules"
-                  outline
-    >
+                  @change="change"
+                  @input="input"
+                  outline>
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -222,7 +236,9 @@
                   :required="required"
                   :rules="rules"
                   type="number"
-                  outline >
+                  @change="change"
+                  @input="input"
+                  outline>
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -236,7 +252,9 @@
                 :name="fullKey"
                 :disabled="disabled"
                 :required="required"
-                :rules="rules">
+                :rules="rules"
+                @change="change"
+                @input="input">
       <v-tooltip v-if="fullSchema.description" slot="append" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -255,7 +273,8 @@
       chips
       multiple
       append-icon=""
-    >
+      @change="change"
+      @input="input">
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -264,7 +283,7 @@
         <v-chip
           :selected="data.selected"
           close
-          @input="modelWrapper[modelKey].splice(modelWrapper[modelKey].indexOf(data.item))"
+          @input="modelWrapper[modelKey].splice(modelWrapper[modelKey].indexOf(data.item)); change(); input()"
         >
           {{ data.item }}
         </v-chip>
@@ -294,7 +313,8 @@
                     :options="options"
                     :store="store"
                     @error="e => $emit('error', e)"
-          />
+                    @change="e => $emit('change', e)"
+                    @input="e => $emit('input', e)" />
 
           <!-- Sub containers for allOfs -->
           <template v-if="fullSchema.allOf && fullSchema.allOf.length">
@@ -313,7 +333,8 @@
                         :parent-key="parentKey"
                         :options="options"
                         @error="e => $emit('error', e)"
-                      />
+                        @change="e => $emit('change', e)"
+                        @input="e => $emit('input', e)" />
                     </v-card-text>
                   </v-card>
                 </v-expansion-panel-content>
@@ -330,7 +351,8 @@
                 :parent-key="parentKey"
                 :options="options"
                 @error="e => $emit('error', e)"
-              />
+                @change="e => $emit('change', e)"
+                @input="e => $emit('input', e)" />
             </template>
           </template>
 
@@ -363,6 +385,8 @@
               :options="options"
               model-key="currentOneOf"
               @error="e => $emit('error', e)"
+              @change="e => $emit('change', e)"
+              @input="e => $emit('input', e)"
             />
           </template>
         </v-layout>
@@ -388,7 +412,8 @@
                     :parent-key="fullKey + '.'"
                     :options="options"
                     @error="e => $emit('error', e)"
-          />
+                    @change="e => $emit('change', e)"
+                    @input="e => $emit('input', e)" />
         </div>
       </v-slide-y-transition>
     </div>
@@ -397,7 +422,7 @@
     <div v-else-if="fullSchema.type === 'array'">
       <v-layout row class="mt-2 mb-1 pr-1">
         <v-subheader>{{ label }}</v-subheader>
-        <v-btn v-if="!disabled" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items))">
+        <v-btn v-if="!disabled" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
           <v-icon>add</v-icon>
         </v-btn>
         <v-spacer/>
@@ -413,20 +438,23 @@
             <v-flex v-for="(itemModel, i) in modelWrapper[modelKey]" :key="i" xs12>
               <v-card class="array-card">
                 <v-card-text>
+
                   <property :schema="fullSchema.items"
                             :model-wrapper="modelWrapper[modelKey]"
                             :model-root="modelRoot"
                             :model-key="i"
-                            :parent-key="`${fullKey}.${i}.`"
+                            :parent-key="`${fullKey}.`"
                             :options="options"
-                            @error="e => $emit('error', e)"/>
+                            @error="e => $emit('error', e)"
+                            @change="e => $emit('change', e)"
+                            @input="e => $emit('input', e)" />
                 </v-card-text>
                 <v-card-actions v-if="!disabled">
                   <v-btn v-if="fullSchema['x-sortable'] !== false" flat icon class="handle">
                     <v-icon>reorder</v-icon>
                   </v-btn>
                   <v-spacer/>
-                  <v-btn flat icon color="warning" @click="modelWrapper[modelKey].splice(i, 1)">
+                  <v-btn flat icon color="warning" @click="modelWrapper[modelKey].splice(i, 1); change(); input()">
                     <v-icon>delete</v-icon>
                   </v-btn>
                 </v-card-actions>
@@ -454,6 +482,7 @@ export default {
       ready: false,
       menu: false,
       rawSelectItems: null,
+      selectItems: null,
       q: '',
       currentOneOf: null,
       fromUrlParams: {},
@@ -517,6 +546,24 @@ export default {
       if (this.fullSchema.type === 'string' && this.fullSchema.maxLength !== undefined) {
         rules.push((val) => (val === undefined || val === null || val.length <= this.fullSchema.maxLength) || '')
       }
+      if (['number', 'integer'].includes(this.fullSchema.type) && this.fullSchema.maximum !== undefined) {
+        rules.push((val) => (val === undefined || val === null || val <= this.fullSchema.maximum) || '')
+      }
+      if (['number', 'integer'].includes(this.fullSchema.type) && this.fullSchema.minimum !== undefined) {
+        rules.push((val) => (val === undefined || val === null || val >= this.fullSchema.minimum) || '')
+      }
+      if (this.fullSchema.enum) {
+        rules.push((val) => (val === undefined || val === null || !!this.fullSchema.enum.find(item => JSON.stringify(item) === JSON.stringify(val))) || '')
+      }
+      if (this.fullSchema.type === 'array' && this.fullSchema.items.enum) {
+        rules.push((val) => (val === undefined || val === null || !val.find(valItem => !this.fullSchema.items.enum.find(item => JSON.stringify(item) === JSON.stringify(valItem)))) || '')
+      }
+      if (this.oneOfSelect && this.fullSchema.type !== 'array') {
+        rules.push((val) => (val === undefined || val === null || !!this.fullSchema.oneOf.find(item => item.const === val)) || '')
+      }
+      if (this.oneOfSelect && this.fullSchema.type === 'array') {
+        rules.push((val) => (val === undefined || val === null || !val.find(valItem => !this.fullSchema.items.oneOf.find(item => item.const === valItem))) || '')
+      }
       return rules
     },
     fromUrl() {
@@ -529,21 +576,6 @@ export default {
       // Look for variable parts in the URL used to fetch data
       if (!this.fullSchema['x-fromUrl']) return null
       return matchAll(this.fullSchema['x-fromUrl'], /\{(.*?)\}/g).toArray().filter(key => key !== 'q')
-    },
-    selectItems() {
-      if (!this.rawSelectItems) return []
-      if (this.fullSchema.type === 'object' && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length) {
-        const keys = this.fullSchema.properties.map(p => p.key)
-        return this.rawSelectItems.map(item => {
-          const filteredItem = {}
-          keys.forEach(key => {
-            if (item[key] !== undefined) filteredItem[key] = item[key]
-          })
-          return filteredItem
-        })
-      } else {
-        return this.rawSelectItems
-      }
     },
     itemKey() {
       return this.fullSchema['x-itemKey'] || 'key'
@@ -571,6 +603,9 @@ export default {
       const rules = []
       if (this.oneOfRequired) rules.push((val) => (val !== undefined && val !== null && val !== '') || this.options.requiredMessage)
       return rules
+    },
+    oneOfSelect() {
+      return (this.fullSchema.type === 'array' && ['string', 'integer', 'number'].includes(this.fullSchema.items.type) && this.fullSchema.items.oneOf) || (['string', 'integer', 'number'].includes(this.fullSchema.type) && this.fullSchema.oneOf)
     }
   },
   watch: {
@@ -602,9 +637,67 @@ export default {
         this.applySubModels()
       },
       deep: true
+    },
+    rawSelectItems: {
+      handler() {
+        this.updateSelectItems()
+      },
+      immediate: true
     }
   },
   methods: {
+    updateSelectItems() {
+      const selectItems = []
+
+      if (!this.rawSelectItems) {
+        // nothing to do
+      } else if (
+        (this.fullSchema.type === 'object' && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length) ||
+        (this.fullSchema.type === 'array' && this.fullSchema.items && this.fullSchema.items.type === 'object' && this.fullSchema.items.properties && Object.keys(this.fullSchema.items.properties).length)
+      ) {
+        const keys = this.fullSchema.properties.map(p => p.key)
+        this.rawSelectItems.forEach(item => {
+          const filteredItem = {}
+          keys.forEach(key => {
+            if (item[key] !== undefined) filteredItem[key] = item[key]
+          })
+          selectItems.push(filteredItem)
+        })
+      } else {
+        this.rawSelectItems.forEach(item => selectItems.push(item))
+      }
+
+      // always propose the existing values so they can be unchecked
+      const model = this.modelWrapper[this.modelKey]
+      const matchItem = (selectItem, item) => {
+        const selectItemStr = JSON.stringify(typeof selectItem === 'object' ? selectItem[this.itemKey] : selectItem)
+        const itemStr = JSON.stringify(typeof item === 'object' ? item[this.itemKey] : item)
+        return selectItemStr === itemStr
+      }
+      if (model) {
+        if (this.fullSchema.type === 'array') {
+          model.reverse().forEach(item => {
+            if (!selectItems.find(selectItem => matchItem(selectItem, item))) {
+              selectItems.push(item)
+            }
+          })
+        } else if (!selectItems.find(selectItem => matchItem(selectItem, model))) {
+          selectItems.push(model)
+        }
+      }
+
+      // we check for actual differences in order to prevent infinite loops
+      if (JSON.stringify(selectItems) !== JSON.stringify(this.selectItems)) {
+        this.selectItems = selectItems
+      }
+    },
+    change() {
+      this.updateSelectItems()
+      this.$emit('change', {key: this.fullKey.replace(/allOf-([0-9]+)\./g, ''), model: this.modelWrapper[this.modelKey]})
+    },
+    input() {
+      this.$emit('input', {key: this.fullKey.replace(/allOf-([0-9]+)\./g, ''), model: this.modelWrapper[this.modelKey]})
+    },
     getDeepKey(obj, key) {
       const keys = key.split('.')
       for (let i = 0; i < keys.length; i++) {
@@ -680,9 +773,16 @@ export default {
 
       // Case of a select based on ajax query
       if (this.fromUrl) this.getSelectItems()
+      // Case of select based on an enum
+      if ((this.fullSchema.type === 'array' && this.fullSchema.items.enum) || this.fullSchema.enum) {
+        this.rawSelectItems = this.fullSchema.type === 'array' ? this.fullSchema.items.enum : this.fullSchema.enum
+      }
+      // Case of select based on a oneof on simple types
+      if (this.oneOfSelect) {
+        this.rawSelectItems = (this.fullSchema.type === 'array' ? this.fullSchema.items : this.fullSchema).oneOf.map(item => ({[this.itemKey]: item.const || (item.enum && item.enum[0]), [this.itemTitle]: item.title}))
+      }
       // Case of an auto-complete field already defined
       if (this.fromUrlWithQuery && model && model[this.itemTitle] !== undefined) {
-        this.rawSelectItems = [model]
         this.q = model[this.itemTitle]
       }
       // Case of a select based on an array somewhere in the data
@@ -739,7 +839,7 @@ export default {
 
 </script>
 
-<style>
+<style lang="css">
 .vjsf-property .array-card .v-card__text {
   padding: 6px 16px 0 16px;
 }
