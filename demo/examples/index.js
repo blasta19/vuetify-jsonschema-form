@@ -1,5 +1,5 @@
 module.exports = [
-  require('./basic'),
+  // require('./basic'),
   require('./arrays'),
   require('./pickers'),
   require('./validation'),
