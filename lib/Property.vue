@@ -188,7 +188,8 @@
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-textarea>
-
+    
+    <div v-else-if="fullSchema.type === 'component'" id="container"></div>
     <!-- text field displayed as password -->
     <v-text-field v-else-if="fullSchema.type === 'string' && fullSchema['x-display'] === 'password'"
                   v-model="modelWrapper[modelKey]"
@@ -422,7 +423,7 @@
     <div v-else-if="fullSchema.type === 'array'">
       <v-layout row class="mt-2 mb-1 pr-1">
         <v-subheader>{{ label }}</v-subheader>
-        <v-btn v-if="!disabled" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
+        <v-btn v-if="modelWrapper[modelKey].length === 0" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
           <v-icon>add</v-icon>
         </v-btn>
         <v-spacer/>
@@ -435,11 +436,12 @@
       <v-container v-if="modelWrapper[modelKey] && modelWrapper[modelKey].length" grid-list-md class="pt-0 px-2">
         <v-layout row wrap>
           <draggable v-model="modelWrapper[modelKey]" :options="{handle:'.handle'}" style="width: 100%;">
-            <v-flex v-for="(itemModel, i) in modelWrapper[modelKey]" :key="i" xs12>
-              <v-card class="array-card">
-                <v-card-text>
-
-                  <property :schema="fullSchema.items"
+            <v-flex v-for="(itemModel, i) in modelWrapper[modelKey]" :key="i">
+              
+                <v-layout row wrap>
+                  <v-flex xs11>
+                    <v-card class="array-card mb-3">
+                    <property :schema="fullSchema.items"
                             :model-wrapper="modelWrapper[modelKey]"
                             :model-root="modelRoot"
                             :model-key="i"
@@ -448,17 +450,23 @@
                             @error="e => $emit('error', e)"
                             @change="e => $emit('change', e)"
                             @input="e => $emit('input', e)" />
-                </v-card-text>
-                <v-card-actions v-if="!disabled">
-                  <v-btn v-if="fullSchema['x-sortable'] !== false" flat icon class="handle">
-                    <v-icon>reorder</v-icon>
-                  </v-btn>
-                  <v-spacer/>
-                  <v-btn flat icon color="warning" @click="modelWrapper[modelKey].splice(i, 1); change(); input()">
-                    <v-icon>delete</v-icon>
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
+                             </v-card>
+                  </v-flex>
+                  <v-flex xs1>
+                    <v-btn fab icon dark small color="red darken-3" @click="modelWrapper[modelKey].splice(i, 1); change(); input()">
+                      <v-icon dark>remove</v-icon>
+                    </v-btn>
+                    <v-btn v-if="(i+1) === modelWrapper[modelKey].length" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
+                      <v-icon>add</v-icon>
+                    </v-btn>
+                  </v-flex>
+                </v-layout>
+          
+                  
+        
+             
+              
+              
             </v-flex>
           </draggable>
         </v-layout>

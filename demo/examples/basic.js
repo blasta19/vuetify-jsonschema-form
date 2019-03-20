@@ -27,6 +27,11 @@ This description can be a long text with markdown content.
         'type': 'string',
         'description': "The person's last name."
       },
+      'button': {
+        'type': 'component',
+        'name': 'Test',
+        'description': "The person's last name."
+      },
       'password': {
         'type': 'string',
         'x-display': 'password'
