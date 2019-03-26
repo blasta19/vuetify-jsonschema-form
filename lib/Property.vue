@@ -99,7 +99,7 @@
     </v-select>
 
     <!-- Select field on an ajax response or from an array in another part of the data -->
-    <v-select v-else-if="fromUrl || fullSchema['x-fromData']"
+    <v-select v-else-if="(fromUrl || fullSchema['x-fromData']) && fullSchema.description !== 'custom'"
               :items="selectItems"
               v-model="modelWrapper[modelKey]"
               :name="fullKey"
@@ -117,7 +117,7 @@
                   outline >
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
-        <div class="vjsf-tooltip" v-html="htmlDescription" />
+        <div class="vjsf-tooltip" v-html="htmlDescription" />{{selectItems}}
       </v-tooltip>
     </v-select>
     <!-- Select field on an store object supplied -->
@@ -418,7 +418,75 @@
         </div>
       </v-slide-y-transition>
     </div>
+  <div v-else-if="fullSchema.description === 'custom' && fromUrl && fullSchema.type === 'array'">
+    <v-layout row class="mt-2 mb-1 pr-1">
+      <v-menu v-if="modelWrapper[modelKey].length === 0" v-model="menu2" :retun-value.sync="menu2">
+        <template v-slot:activator="{ on }">
+        <v-btn fab icon v-on="on">
+          <v-icon>add</v-icon>
+        </v-btn>
+        </template>
+        <v-list>
+          <v-list-tile  v-for="(item, i) in customItems" :key="i" @click="saveItem(modelWrapper[modelKey], {type: item.id,title: item.desc});">
+            <v-list-tile-title>{{ item.desc }}</v-list-tile-title>
+          </v-list-tile>
+        </v-list>
+      </v-menu>
+      <v-spacer/>
+    <v-tooltip v-if="fullSchema.description" left>
+      <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
+      <div class="vjsf-tooltip" v-html="htmlDescription"/>
+    </v-tooltip>
+    </v-layout>
 
+      <v-container v-if="modelWrapper[modelKey] && modelWrapper[modelKey].length" grid-list-md class="pt-0 px-2">
+        <v-layout row wrap>
+          <draggable v-model="modelWrapper[modelKey]" :options="{handle:'.handle'}" style="width: 100%;">
+          
+            <v-flex v-for="(itemModel, i) in modelWrapper[modelKey]" :key="i">
+                <v-layout row wrap>
+                  <v-flex xs10>
+                    <label for="">{{itemModel.title}}</label>
+                    <v-card flat color="transparent" class="array-card mb-3">
+                    <property :schema="fullSchema.items"
+                            :model-wrapper="modelWrapper[modelKey]"
+                            :model-root="modelRoot"
+                            :model-key="i"
+                            :parent-key="`${fullKey}.`"
+                            :options="options"
+                            @error="e => $emit('error', e)"
+                            @change="e => $emit('change', e)"
+                            @input="e => $emit('input', e)" />
+                             </v-card>
+                  </v-flex>
+                  <v-flex xs2>
+                    <v-layout align-center justify-center row fill-height class="p-">
+                      <v-btn fab icon dark small color="red darken-3" @click="modelWrapper[modelKey].splice(i, 1); change(); input()">
+                      <v-icon dark>remove</v-icon>
+                    </v-btn>
+                    <v-menu v-if="(modelWrapper[modelKey].length - 1) !== (customItems.length - 1) && (i+1) === modelWrapper[modelKey].length">
+                      <template v-slot:activator="{ on }">
+                        <v-btn fab small icon color="primary" icon v-on="on">
+                          <v-icon>add</v-icon>
+                        </v-btn>
+                      </template>
+                      <v-list>
+                        <v-list-tile v-for="(item, i) in customItems" :key="i" @click="saveItem(modelWrapper[modelKey], {type: item.id,title: item.desc}); change(); input()">
+                          <v-list-tile-title>{{ item.desc }}</v-list-tile-title>
+                        </v-list-tile>
+                      </v-list>
+                    </v-menu>
+                    </v-layout>
+                    
+                  </v-flex>
+                </v-layout>
+            </v-flex>
+          </draggable>
+        </v-layout>
+      </v-container>
+
+
+    </div>
     <!-- Dynamic size array of complex types sub container -->
     <div v-else-if="fullSchema.type === 'array'">
       <v-layout row class="mt-2 mb-1 pr-1">
@@ -461,17 +529,10 @@
                     </v-btn>
                   </v-flex>
                 </v-layout>
-          
-                  
-        
-             
-              
-              
             </v-flex>
           </draggable>
         </v-layout>
       </v-container>
-
     </div>
 
     <p v-else-if="options.debug">Unsupported type "{{ fullSchema.type }}" - {{ fullSchema }}</p>
@@ -496,6 +557,8 @@ export default {
       fromUrlParams: {},
       loading: false,
       folded: true,
+      menu2: null,
+      customItems: null,
       subModels: {} // a container for objects from root oneOfs and allOfs
     }
   },
@@ -659,11 +722,18 @@ export default {
 
       if (!this.rawSelectItems) {
         // nothing to do
-      } else if (
-        (this.fullSchema.type === 'object' && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length) ||
-        (this.fullSchema.type === 'array' && this.fullSchema.items && this.fullSchema.items.type === 'object' && this.fullSchema.items.properties && Object.keys(this.fullSchema.items.properties).length)
+      } else if (this.fullSchema.description === 'custom') {
+        this.rawSelectItems.forEach(item => selectItems.push(item))
+      }else if (
+        (this.fullSchema.description !== 'custom' && this.fullSchema.type === 'object' && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length) ||
+        (this.fullSchema.description !== 'custom' && this.fullSchema.type === 'array' && this.fullSchema.items && this.fullSchema.items.type === 'object' && this.fullSchema.items.properties && Object.keys(this.fullSchema.items.properties).length)
       ) {
-        const keys = this.fullSchema.properties.map(p => p.key)
+        if (this.fullSchema.properties != null) {
+          const keys = this.fullSchema.properties.map(p => p.key)
+        } else {
+          const keys = this.fullSchema.items.map(p => p.key)
+        }
+        
         this.rawSelectItems.forEach(item => {
           const filteredItem = {}
           keys.forEach(key => {
@@ -683,7 +753,7 @@ export default {
         return selectItemStr === itemStr
       }
       if (model) {
-        if (this.fullSchema.type === 'array') {
+        if (this.fullSchema.type === 'array' && this.fullSchema.description !== 'custom') {
           model.reverse().forEach(item => {
             if (!selectItems.find(selectItem => matchItem(selectItem, item))) {
               selectItems.push(item)
@@ -693,7 +763,10 @@ export default {
           selectItems.push(model)
         }
       }
-
+      if(selectItems != null){
+        this.customItems = selectItems.filter(si => !Array.isArray(si))
+      }
+      
       // we check for actual differences in order to prevent infinite loops
       if (JSON.stringify(selectItems) !== JSON.stringify(this.selectItems)) {
         this.selectItems = selectItems
@@ -766,6 +839,12 @@ export default {
           }
         })
       })
+    },
+    saveItem (array, obj) {
+      let duplicate = array.filter(a => a.type === obj.type)
+      if (duplicate.length === 0) {
+        array.push(obj)
+      }
     },
     initFromSchema() {
       // console.log('Init from schema')

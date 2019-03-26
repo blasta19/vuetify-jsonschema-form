@@ -16,6 +16,7 @@ Vue.component('draggable', Draggable)
 
 new Vue({
   el: '#app',
+  devtool: 'source-map',
   components: {DemoApp},
   render: h => h('demo-app')
 })
