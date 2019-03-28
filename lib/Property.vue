@@ -1,8 +1,9 @@
 <template>
   <!-- Hide const ? Or make a readonly field -->
+  
   <v-flex v-if="fullSchema && fullSchema.const === undefined && fullSchema['x-display'] !== 'hidden'"  :class="fullSchema['x-grid'] ? fullSchema['x-grid'] : 'xs12'">
     <!-- Date picker -->
-    <v-menu v-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format)" ref="menu" :close-on-content-click="false" v-model="menu"
+    <v-menu v-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format) && !readonly" ref="menu" :close-on-content-click="false" v-model="menu"
             :nudge-right="40"
             :disabled="disabled"
             lazy
@@ -29,7 +30,12 @@
       <v-date-picker v-model="modelWrapper[modelKey]" @input="menu = false" no-title scrollable>
       </v-date-picker>
     </v-menu>
-
+  <div v-else-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format)">
+    <v-subheader class="px-0">
+      {{label}}
+    </v-subheader>
+    {{modelWrapper[modelKey]}}
+  </div>
     <!-- Color picking -->
     <v-input v-else-if="fullSchema.format === 'hexcolor'"
              :name="fullKey"
@@ -99,7 +105,7 @@
     </v-select>
 
     <!-- Select field on an ajax response or from an array in another part of the data -->
-    <v-select v-else-if="(fromUrl || fullSchema['x-fromData']) && fullSchema.description !== 'custom'"
+    <v-select v-else-if="(fromUrl || fullSchema['x-fromData']) && fullSchema.description !== 'custom' && readonly === false" 
               :items="selectItems"
               v-model="modelWrapper[modelKey]"
               :name="fullKey"
@@ -120,6 +126,12 @@
         <div class="vjsf-tooltip" v-html="htmlDescription" />{{selectItems}}
       </v-tooltip>
     </v-select>
+    <div v-else-if="(fromUrl || fullSchema['x-fromData']) && fullSchema.description !== 'custom'">
+      <v-subheader class="px-0">
+        {{label}}
+      </v-subheader>
+      {{modelWrapper[modelKey].desc}}
+    </div>
     <!-- Select field on an store object supplied -->
     <v-select v-else-if="fullSchema['storeData']"
               :items="store[fullSchema['storeData']].map(i => ({text: i[fullSchema['text']], value: i[fullSchema['key']]}))"
@@ -209,7 +221,8 @@
     </v-text-field>
 
     <!-- Simple text field -->
-    <v-text-field v-else-if="fullSchema.type === 'string'"
+    
+    <v-text-field v-else-if="fullSchema.type === 'string' && !readonly"
                   v-model="modelWrapper[modelKey]"
                   :name="fullKey"
                   :label="label"
@@ -218,15 +231,20 @@
                   :rules="rules"
                   @change="change"
                   @input="input"
-                  outline>
+                  outline>{{"text" + modelWrapper[modelKey]}}
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-text-field>
-
+    <div v-else-if="fullSchema.type === 'string'">
+      <v-subheader class="px-0">
+        {{label}}
+      </v-subheader>
+      {{modelWrapper[modelKey]}}
+    </div>
     <!-- Simple number fields -->
-    <v-text-field v-else-if="fullSchema.type === 'number' || fullSchema.type === 'integer'"
+    <v-text-field v-else-if="(fullSchema.type === 'number' || fullSchema.type === 'integer') && !readonly"
                   v-model.number="modelWrapper[modelKey]"
                   :name="fullKey"
                   :label="label"
@@ -245,7 +263,9 @@
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-text-field>
-
+<label v-else-if="fullSchema.type === 'number' || fullSchema.type === 'integer'">
+      {{label + "::" + modelWrapper[modelKey]}}
+    </label>
     <!-- Simple boolean field -->
     <v-checkbox v-else-if="fullSchema.type === 'boolean'"
                 v-model="modelWrapper[modelKey]"
@@ -312,6 +332,7 @@
                     :parent-key="fullKey + '.'"
                     :required="!!(fullSchema.required && fullSchema.required.includes(childProp.key))"
                     :options="options"
+                    :readonly="readonly"
                     :store="store"
                     @error="e => $emit('error', e)"
                     @change="e => $emit('change', e)"
@@ -419,11 +440,11 @@
       </v-slide-y-transition>
     </div>
   <div v-else-if="fullSchema.description === 'custom' && fromUrl && fullSchema.type === 'array'">
-    <v-layout row class="mt-2 mb-1 pr-1">
+    <v-layout v-if="!readonly" row class="mb-1">
       <v-menu v-if="modelWrapper[modelKey].length === 0" v-model="menu2" :retun-value.sync="menu2">
         <template v-slot:activator="{ on }">
-        <v-btn fab icon v-on="on">
-          <v-icon>add</v-icon>
+        <v-btn color="deep-purple lighten-5" depressed  round v-on="on">
+          {{fullSchema['label']}} <v-icon> {{fullSchema['icon'] ? fullSchema['icon'] : 'add'}}</v-icon>
         </v-btn>
         </template>
         <v-list>
@@ -432,21 +453,16 @@
           </v-list-tile>
         </v-list>
       </v-menu>
-      <v-spacer/>
-    <v-tooltip v-if="fullSchema.description" left>
-      <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
-      <div class="vjsf-tooltip" v-html="htmlDescription"/>
-    </v-tooltip>
     </v-layout>
 
-      <v-container v-if="modelWrapper[modelKey] && modelWrapper[modelKey].length" grid-list-md class="pt-0 px-2">
-        <v-layout row wrap>
+      <v-container v-if="modelWrapper[modelKey] && modelWrapper[modelKey].length" fluid pa-0>
+        <v-layout row wrap grid-list-md >
           <draggable v-model="modelWrapper[modelKey]" :options="{handle:'.handle'}" style="width: 100%;">
           
             <v-flex v-for="(itemModel, i) in modelWrapper[modelKey]" :key="i">
                 <v-layout row wrap>
                   <v-flex xs10>
-                    <label for="">{{itemModel.title}}</label>
+                    <v-subheader class="px-1">{{itemModel.title}}</v-subheader>
                     <v-card flat color="transparent" class="array-card mb-3">
                     <property :schema="fullSchema.items"
                             :model-wrapper="modelWrapper[modelKey]"
@@ -454,13 +470,14 @@
                             :model-key="i"
                             :parent-key="`${fullKey}.`"
                             :options="options"
+                            :readonly="readonly"
                             @error="e => $emit('error', e)"
                             @change="e => $emit('change', e)"
                             @input="e => $emit('input', e)" />
                              </v-card>
                   </v-flex>
                   <v-flex xs2>
-                    <v-layout align-center justify-center row fill-height class="p-">
+                    <v-layout v-if="!readonly"  align-center justify-center row fill-height class="p-">
                       <v-btn fab icon dark small color="red darken-3" @click="modelWrapper[modelKey].splice(i, 1); change(); input()">
                       <v-icon dark>remove</v-icon>
                     </v-btn>
@@ -545,7 +562,7 @@ const md = require('markdown-it')()
 
 export default {
   name: 'Property',
-  props: ['schema', 'modelWrapper', 'modelRoot', 'modelKey', 'parentKey', 'required', 'options', 'store'],
+  props: ['schema', 'modelWrapper', 'modelRoot', 'modelKey', 'parentKey', 'required', 'options', 'store', 'readonly'],
   data() {
     return {
       ready: false,
@@ -939,6 +956,9 @@ export default {
 }
 
 .vjsf-tooltip p:last-child {
+  margin-bottom: 0;
+}
+.v-input__slot{
   margin-bottom: 0;
 }
 

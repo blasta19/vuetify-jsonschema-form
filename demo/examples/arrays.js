@@ -5,6 +5,7 @@ module.exports = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "A representation of a person, company, organization, or place",
   "type": "object",
+  "required": ["name"],
   "properties": {
     "name": {
       "type": "array",
@@ -32,13 +33,20 @@ module.exports = {
 },  schema: {
   "id": "http://example.com/arrays.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "A representation of a person, company, organization, or place",
   "type": "object",
-
+  "required": ["number"],
   "properties": {
+    "number": {
+      "type": "string",
+      "x-grid": "xs6"
+    }, "test": {
+      "type": "string",
+      "x-grid": "xs6"
+    },
     "name": {
       "type": "array",
       "description": "custom",
+      "label": "Add Name",
       "x-fromUrl": "http://app.capstone-v2.local/api/data/reference?type=category&filter=IDTYPE",
       "items": {
         "$ref": "#/definitions/name"

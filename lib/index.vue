@@ -7,6 +7,7 @@
     :model-wrapper="modelWrapper"
     :options="fullOptions"
     :store="store"
+    :readonly="true"
     model-key="root"
     parent-key=""
     @error="e => $emit('error', e)"
@@ -23,7 +24,7 @@ import colors from './colors'
 export default {
   name: 'VJsonschemaForm',
   components: {Property},
-  props: ['schema', 'model', 'options','store'],
+  props: ['schema', 'options','store', 'model', 'readonly'],
   data() {
     return {modelWrapper: {root: this.model}}
   },
