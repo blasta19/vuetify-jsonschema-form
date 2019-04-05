@@ -5,7 +5,6 @@ module.exports = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "A representation of a person, company, organization, or place",
   "type": "object",
-  "required": ["name"],
   "properties": {
     "name": {
       "type": "array",
@@ -34,20 +33,20 @@ module.exports = {
   "id": "http://example.com/arrays.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["number"],
   "properties": {
     "number": {
       "type": "string",
       "x-grid": "xs6"
     }, "test": {
       "type": "string",
-      "x-grid": "xs6"
+      "x-grid": "xs6",
+      "pattern": "\\/.+@.+/",
     },
     "name": {
       "type": "array",
       "description": "custom",
       "label": "Add Name",
-      "x-fromUrl": "http://app.capstone-v2.local/api/data/reference?type=category&filter=IDTYPE",
+      "x-fromUrl": "http://app.capstone-v2.local/api/data/reference?type=category&filter=NAMETYPE",
       "items": {
         "$ref": "#/definitions/name"
       }
@@ -62,23 +61,18 @@ module.exports = {
           "type": "string",
           "x-display": "hidden"
         },
+        "fields": {
+          "type": "string",
+          "x-display": "hidden"
+        },
         "type": {
           "type": "string",
           "x-display": "hidden"
         },
-        "number": {
-          "type": "string",
-          "x-grid": "xs6"
+        "data": {
+          "type": "array"
         },
-        "reference": {
-          "type": "integer",
-          "x-grid": "xs6"
-        },
-        "reference": {
-          "type": "string",
-          "format": "date",
-          "x-grid": "xs6"
-        },
+ 
         "level": {
           "type": "object",
           "description": "The values come from an HTTP request and are put into an array.",

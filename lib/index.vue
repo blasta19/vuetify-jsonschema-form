@@ -1,13 +1,11 @@
 <template lang="html">
-<v-container fluid class="p-1 pt-4">
+<v-container fluid class="p-1">
 <property
     v-if="!!resolvedSchema"
     :schema="resolvedSchema"
     :model-root="modelWrapper.root"
     :model-wrapper="modelWrapper"
     :options="fullOptions"
-    :store="store"
-    :readonly="true"
     model-key="root"
     parent-key=""
     @error="e => $emit('error', e)"
@@ -21,10 +19,11 @@
 import jrefs from './json-refs'
 import Property from './Property.vue'
 import colors from './colors'
+
 export default {
   name: 'VJsonschemaForm',
   components: {Property},
-  props: ['schema', 'options','store', 'model', 'readonly'],
+  props: ['schema', 'options', 'model'],
   data() {
     return {modelWrapper: {root: this.model}}
   },
