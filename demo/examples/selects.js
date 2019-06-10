@@ -43,6 +43,7 @@ module.exports = {
         'x-itemTitle': 'title',
         'x-itemKey': 'href'
       },
+      
       'fromAjaxStringArray': {
         type: 'array',
         items: {
@@ -75,14 +76,15 @@ module.exports = {
         'x-itemTitle': 'x-originalName',
         'x-itemKey': 'key'
       },
-      'fromAjaxWithQuery': {
-        type: 'object',
-        description: 'The values come from an HTTP request with textual filter.',
-        'x-fromUrl': 'https://koumoul.com/s/data-fair/api/v1/datasets?status=finalized&select=title&q={q}&owner={context.owner.type}:{context.owner.id}',
-        'x-itemsProp': 'results',
-        'x-itemTitle': 'title',
-        'x-itemKey': 'href'
-      },
+      fromAjaxWithQuery: {  
+        "title":"Residential Address",
+        "type":"string",
+        "description":"The values come from an HTTP request and are put into an array.",
+        "x-fromUrl":"https://fin3.capstonemedical.com.au/api/search/address?filter={q}",
+        "x-itemTitle":"address",
+        "x-itemKey":"address",
+        "create_new": true
+     },
       chartDef: {
         // Simple oneOf on object, the title of const property is used as title of the select
         type: 'object',

@@ -8,6 +8,7 @@
     :options="fullOptions"
     model-key="root"
     parent-key=""
+    :origin="origin"
     @error="e => $emit('error', e)"
     @change="e => $emit('change', e)"
     @input="e => $emit('input', e)"
@@ -23,7 +24,7 @@ import colors from './colors'
 export default {
   name: 'VJsonschemaForm',
   components: {Property},
-  props: ['schema', 'options', 'model'],
+  props: ['schema', 'options', 'model', 'origin'],
   data() {
     return {modelWrapper: {root: this.model}}
   },
