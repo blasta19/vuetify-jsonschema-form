@@ -1,6 +1,6 @@
 <template>
   <!-- Hide const ? Or make a readonly field -->
-  
+
   <v-flex v-if="fullSchema && fullSchema.const === undefined && fullSchema['x-display'] !== 'hidden'"  :class="fullSchema['x-grid'] ? fullSchema['x-grid'] : 'xs12'">
     <!-- Date picker -->
     <v-menu v-if="fullSchema.type === 'string' && ['date', 'date-time'].includes(fullSchema.format)" ref="menu" :close-on-content-click="false" v-model="menu"
@@ -11,22 +11,27 @@
             offset-y
             full-width
             min-width="290px">
+            <template v-slot:activator="{ on }">
       <v-text-field
         slot="activator"
-        v-model="modelWrapper[modelKey]"
+        maxlength="10"
+        v-model="dateFormatted"
         :label="label"
         :name="fullKey"
         :required="required"
         :rules="rules"
         :clearable="!required"
         prepend-inner-icon="event"
-        readonly
+        @keyup.enter="modelWrapper[modelKey] = parseDate(dateFormatted)"
+        v-on="on"
         outline>
+
         <v-tooltip v-if="fullSchema['icon']" slot="prepend-inner" left>
           <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
           <div class="vjsf-tooltip" v-html="htmlDescription" />
         </v-tooltip>
       </v-text-field>
+            </template>
       <v-date-picker v-model="modelWrapper[modelKey]" @input="menu = false" no-title scrollable>
       </v-date-picker>
     </v-menu>
@@ -54,7 +59,7 @@
         :colors="options.colors"
         :trigger-style="{width:'36px', height:'36px'}"
         shapes="circles"
-        @input="input();change()"/>
+        @input="input();change();"/>
     </v-input>
 
     <!-- Select field based on an enum (array or simple value) -->
@@ -70,9 +75,8 @@
         :rules="rules"
         :disabled="disabled"
         :clearable="!required"
+        :readonly="fullSchema.readonly"
         :multiple="fullSchema.type === 'array'"
-        @change="change"
-        @input="input"
         outline>
         <v-tooltip v-if="fullSchema['icon']" slot="prepend-inner" left>
           <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
@@ -95,6 +99,7 @@
               :multiple="fullSchema.type === 'array'"
               :item-text="itemTitle"
               :item-value="itemKey"
+              :readonly="fullSchema.readonly"
               @change="change"
               @input="input"
               outline>
@@ -105,7 +110,7 @@
     </v-select>
 
     <!-- Select field on an ajax response or from an array in another part of the data -->
-    <v-select v-else-if="(fromUrl || fullSchema['x-fromData']) && fullSchema.description !== 'custom'"
+    <v-select v-else-if="(fromUrl || fullSchema['x-fromData'] || fullSchema['x-getData']) && fullSchema['x-arrayType'] !== 'custom'"
               :items="selectItems"
               v-model="modelWrapper[modelKey]"
               :name="fullKey"
@@ -115,17 +120,25 @@
               :rules="rules"
               :item-text="itemTitle"
               :item-value="itemKey"
-              :return-object="(fullSchema.type === 'array' && fullSchema.items.type === 'object') || fullSchema.type === 'object'"
+              :return-object="(fullSchema.type === 'array' && fullSchema.items.type === 'object') || fullSchema.type === 'object' || fullSchema['x-type'] === 'object'"
               :clearable="!required"
               :loading="loading"
               :multiple="fullSchema.type === 'array'"
-                  outline >
+              :readonly="fullSchema.readonly"
+                  outline
+              @input="input"
+              >
       <v-tooltip v-if="fullSchema['icon']" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
+      <template v-if="fullSchema.type === 'array'" v-slot:selection="{item, index}" >
+        <span v-if="index === 0" style="max-width:150px" class="mt-3">{{ item.name }}</span>
+        <span v-if="index === 1" class="grey--text caption mt-3">&nbsp;+{{ (modelWrapper[modelKey].length - 1) }}</span>
+      </template>
     </v-select>
     <!-- auto-complete field on an ajax response with query -->
+
     <v-combobox v-else-if="fromUrlWithQuery"
                     :items="selectItems"
                     :search-input.sync="q"
@@ -138,30 +151,42 @@
                     :rules="rules"
                     :item-text="itemTitle"
                     :item-value="itemKey"
-                    :return-object="(fullSchema.type === 'array' && fullSchema.items.type === 'object') || fullSchema.type === 'object'"
+                    :return-object="(fullSchema.type === 'array' && fullSchema.items.type === 'object') || fullSchema.type === 'object' || fullSchema['x-type'] === 'object'"
                     :clearable="!required"
                     :filter="() => true"
                     :placeholder="options.searchMessage"
+                    :readonly="fullSchema.readonly"
                     :loading="loading"
                     :multiple="fullSchema.type === 'array'"
-                    @change="change"
-                    @input="input"
+                    @keyup="modelWrapper[modelKey] = q.length === 0 ? null : modelWrapper[modelKey]"
+                    hide-selected
                     outline>
-      <template v-slot:no-data>
-
-        <v-list-tile v-if="fullSchema['create_new']">
+        <template v-slot:no-data>
+        <v-list-tile v-if="fullSchema['create_new'] && q && !loading && (/\s\w{3,}/.test(q) || (fullSchema['one_word'] && q.length > 3))">
           <v-chip
             label
             small
             text-color="white"
             color="green"
-            @click="openDialog((fullSchema['no-data-form'] ? fullSchema['no-data-form'] : false), fullSchema['no-data-value'])"
+            @click = "createNew((fullSchema['no-data-form'] ? fullSchema['no-data-form'] : false), fullSchema['no-data-value'])"
           >
            Create New {{q}}
           </v-chip>
         </v-list-tile>
       </template>
- 
+      <template v-slot:append-item>
+        <v-list-tile v-if="fullSchema['create_new'] && selectItems !== null && selectItems.length > 0 && q && !loading && (/\s\w{3,}/.test(q) || (fullSchema['one_word'] && q.length > 3))">
+          <v-chip
+            label
+            small
+            text-color="white"
+            color="green"
+            @click = "createNew((fullSchema['no-data-form'] ? fullSchema['no-data-form'] : false), fullSchema['no-data-value'])"
+          >
+           Create New {{q}}
+          </v-chip>
+        </v-list-tile>
+      </template>
       <v-tooltip v-if="fullSchema.description" slot="prepend-inner" left>
         <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
         <div class="vjsf-tooltip" v-html="htmlDescription" />
@@ -185,7 +210,7 @@
         <div class="vjsf-tooltip" v-html="htmlDescription" />
       </v-tooltip>
     </v-textarea>
-    
+
     <div v-else-if="fullSchema.type === 'component'" id="container"></div>
     <!-- text field displayed as password -->
     <v-text-field v-else-if="fullSchema.type === 'string' && fullSchema['x-display'] === 'password'"
@@ -196,6 +221,7 @@
                   :required="required"
                   :rules="rules"
                   type="password"
+                  :readonly="fullSchema.readonly"
                   @change="change"
                   @input="input"
                   outline>
@@ -206,7 +232,7 @@
     </v-text-field>
 
     <!-- Simple text field -->
-    
+
     <v-text-field v-else-if="fullSchema.type === 'string'"
                   v-model="modelWrapper[modelKey]"
                   :name="fullKey"
@@ -214,6 +240,7 @@
                   :disabled="disabled"
                   :required="required"
                   :rules="rules"
+                  :readonly="fullSchema.readonly"
                   @change="change"
                   @input="input"
                   height="10"
@@ -230,8 +257,9 @@
                   :label="label"
                   :min="fullSchema.minimum"
                   :max="fullSchema.maximum"
-                  :step="fullSchema.type === 'integer' ? 1 : 0.01"
+                  :step="fullSchema.type === 'integer' && fullSchema.step ? apptInterval : 1"
                   :disabled="disabled"
+                  :readonly="fullSchema.readonly"
                   :required="required"
                   :rules="rules"
                   type="number"
@@ -249,6 +277,7 @@
                   :label="label"
                   :disabled="disabled"
                   :required="required"
+                  :readonly="fullSchema.readonly"
                   :rules="rules"
                   type="string"
                   @change="change"
@@ -285,6 +314,7 @@
       :rules="rules"
       :disabled="disabled"
       chips
+      :readonly="fullSchema.readonly"
       multiple
       append-icon=""
       @change="change"
@@ -306,17 +336,23 @@
 
     <!-- Object sub container with properties that may include a select based on a oneOf and subparts base on a allOf -->
     <div v-else-if="fullSchema.type === 'object'">
-      <v-subheader v-if="fullSchema.title" :style="foldable ? 'cursor:pointer;' :'' " class="mt-2" @click="folded = !folded">
+      <v-subheader v-if="fullSchema.title" :style="foldable ? 'cursor:pointer;' :'' " class="mt-1 mb-2 pl-0" @click="folded = !folded">
         {{ fullSchema.title }}
         &nbsp;
         <v-icon v-if="foldable && folded">arrow_drop_down</v-icon>
         <v-icon v-if="foldable && !folded">arrow_drop_up</v-icon>
+  <v-tooltip v-if="fullSchema.description" left>
+        <v-icon slot="activator">
+          info
+        </v-icon>
+        <div class="vjsf-tooltip" v-html="htmlDescription" />
+      </v-tooltip>
       </v-subheader>
 
       <v-slide-y-transition>
 
         <v-layout row wrap v-show="!foldable || !folded">
-          <p v-if="fullSchema.description">{{ fullSchema.description }}</p>
+          <!-- <p v-if="fullSchema.description">{{ fullSchema.description }}</p> -->
           <property v-for="childProp in fullSchema.properties" :key="childProp.key"
                     :schema="childProp"
                     :model-wrapper="modelWrapper[modelKey]"
@@ -325,10 +361,11 @@
                     :parent-key="fullKey + '.'"
                     :required="!!(fullSchema.required && fullSchema.required.includes(childProp.key))"
                     :options="options"
-                    :origin="origin"
+                    :apptInterval="apptInterval"
                     @error="e => $emit('error', e)"
                     @change="e => $emit('change', e)"
-                    @input="e => $emit('input', e)" />
+                    @input="e => $emit('input', e)"
+                    @createNew="e => $emit('createNew', e)" />
 
           <!-- Sub containers for allOfs -->
           <template v-if="fullSchema.allOf && fullSchema.allOf.length">
@@ -346,10 +383,11 @@
                         :model-key="'allOf-' + i"
                         :parent-key="parentKey"
                         :options="options"
-                        :origin="origin"
+                        :apptInterval="apptInterval"
                         @error="e => $emit('error', e)"
                         @change="e => $emit('change', e)"
-                        @input="e => $emit('input', e)" />
+                        @input="e => $emit('input', e)"
+                        @createNew="e => $emit('createNew', e)" />
                     </v-card-text>
                   </v-card>
                 </v-expansion-panel-content>
@@ -365,10 +403,11 @@
                 :model-key="'allOf-' + i"
                 :parent-key="parentKey"
                 :options="options"
-                :origin="origin"
+                :apptInterval="apptInterval"
                 @error="e => $emit('error', e)"
                 @change="e => $emit('change', e)"
-                @input="e => $emit('input', e)" />
+                @input="e => $emit('input', e)"
+                @createNew="e => $emit('createNew', e)" />
             </template>
           </template>
 
@@ -382,9 +421,10 @@
             :label="oneOfConstProp ? (oneOfConstProp.title || oneOfConstProp.key) : 'Type'"
             :required="oneOfRequired"
             :clearable="!oneOfRequired"
+            :readonly="fullSchema.readonly"
             :rules="oneOfRules"
             item-text="title"
-            return-object 
+            return-object
             outline >
             <v-tooltip v-if="oneOfConstProp && oneOfConstProp.description" slot="prepend-inner" left>
               <v-icon slot="activator">{{fullSchema['icon'] !== '' ? fullSchema['icon']  : 'info'}}</v-icon>
@@ -399,11 +439,12 @@
               :model-root="modelRoot"
               :parent-key="parentKey"
               :options="options"
-              :origin="origin"
+              :apptInterval="apptInterval"
               model-key="currentOneOf"
               @error="e => $emit('error', e)"
               @change="e => $emit('change', e)"
               @input="e => $emit('input', e)"
+              @createNew="e => $emit('createNew', e)"
             />
           </template>
         </v-layout>
@@ -412,11 +453,16 @@
 
     <!-- Tuples array sub container -->
     <div v-else-if="fullSchema.type === 'array' && Array.isArray(fullSchema.items)">
-      <v-subheader v-if="fullSchema.title" :style="foldable ? 'cursor:pointer;' :'' " class="mt-2" @click="folded = !folded">
+      <v-subheader v-if="fullSchema.title" :style="foldable ? 'cursor:pointer;' :'' " class="mt-1 mb-2 pl-0" @click="folded = !folded">
         {{ fullSchema.title }}
-        &nbsp;
         <v-icon v-if="foldable && folded">arrow_drop_down</v-icon>
         <v-icon v-if="foldable && !folded">arrow_drop_up</v-icon>
+        <v-tooltip v-if="fullSchema.description" left>
+        <v-icon slot="activator">
+          info
+        </v-icon>
+        <div class="vjsf-tooltip" v-html="htmlDescription" />
+      </v-tooltip>
       </v-subheader>
       <v-slide-y-transition>
         <div v-show="!foldable || !folded">
@@ -428,18 +474,19 @@
                     :model-key="i"
                     :parent-key="fullKey + '.'"
                     :options="options"
-                    :origin="origin"
+                    :apptInterval="apptInterval"
                     @error="e => $emit('error', e)"
                     @change="e => $emit('change', e)"
-                    @input="e => $emit('input', e)" />
+                    @input="e => $emit('input', e)"
+                    @createNew="e => $emit('createNew', e)" />
         </div>
       </v-slide-y-transition>
     </div>
-  <div v-else-if="(fullSchema.description === 'custom') && (fromUrl || fullSchema['x-fromData'])">
-    <v-layout row class="mb-1">
+  <div v-else-if="(fullSchema['x-arrayType'] === 'custom') && (fromUrl || fullSchema['x-fromData'] || fullSchema['x-getData'])">
+    <v-layout row wrap class="mb-1 pl-1">
       <v-menu v-if="modelWrapper[modelKey].length === 0" v-model="menu2" :retun-value.sync="menu2">
         <template v-slot:activator="{ on }">
-        <v-btn color="buttoncolor" depressed v-on="on">
+        <v-btn color="buttoncolor" class="px-4" depressed v-on="on">
           {{fullSchema['label']}} <v-icon v-if="(!fullSchema['label'] && !fullSchema['icon']) || fullSchema['icon']"> {{fullSchema['icon'] ? fullSchema['icon'] : 'add'}}</v-icon>
         </v-btn>
         </template>
@@ -449,43 +496,45 @@
           </v-list-tile>
         </v-list>
       </v-menu>
+
     </v-layout>
 
       <v-container v-if="modelWrapper[modelKey] && modelWrapper[modelKey].length" fluid pa-0>
         <v-layout row wrap grid-list-md >
           <draggable v-model="modelWrapper[modelKey]" :options="{handle:'.handle'}" style="width: 100%;">
-          
+
             <v-flex v-for="(itemModel, i) in sortedData" :key="i">
                 <v-layout row wrap>
                   <v-flex xs10>
-                    <v-subheader class="px-1">{{itemModel.title}}</v-subheader>
+                    <v-subheader class="px-0 mb-2">{{itemModel.title}}</v-subheader>
                     <v-card flat color="transparent" class="array-card">
                       <v-layout row wrap>
-                       
-                        <property v-for="(child, index) in sortedData[i].fields.properties" :key="index" 
+
+                        <property v-for="(child, index) in sortedData[i].fields.properties" :key="index"
                             :schema="child"
                             :model-wrapper="sortedData[i]"
                             :model-root="sortedData"
                             :model-key="index"
                             :parent-key="fullKey + '.'"
-                            :required="!!(sortedData[i].fields.required && sortedData[i].fields.required.includes(child.key))"
+                            :required="sortedData[i].fields.required"
                             :options="options"
-                            :origin="origin"
+                            :apptInterval="apptInterval"
                             @error="e => $emit('error', e)"
                             @change="e => $emit('change', e)"
-                            @input="e => $emit('input', e)" />
+                            @input="e => $emit('input', e)"
+                            @createNew="e => $emit('createNew', e)" />
                       </v-layout>
                     </v-card>
                   </v-flex>
                   <v-flex xs2>
-                    <v-layout align-center justify-center row fill-height class="p-">
-                      <v-btn class="ma-1" fab icon dark small color="red darken-3" @click="deleteItem(i); change(); input()">
+                    <v-layout align-center row fill-height class="p-">
+                      <v-btn class="ma-1" fab icon dark small color="#D96252" @click="deleteItem(i); change(); input()">
                       <v-icon dark>remove</v-icon>
                     </v-btn>
                     <v-menu v-if="(!fullSchema['uniqueness'] || (modelWrapper[modelKey].length - 1) !== (customItems.length - 1)) && (i+1) === modelWrapper[modelKey].length">
                       <template v-slot:activator="{ on }">
-                        <v-btn class="ma-1" fab small icon color="primary" icon v-on="on">
-                          <v-icon>add</v-icon>
+                        <v-btn class="ma-1" fab small icon color="#66639B" v-on="on">
+                          <v-icon color="white">add</v-icon>
                         </v-btn>
                       </template>
                       <v-list>
@@ -495,7 +544,6 @@
                       </v-list>
                     </v-menu>
                     </v-layout>
-                    
                   </v-flex>
                 </v-layout>
             </v-flex>
@@ -508,9 +556,8 @@
     <!-- Dynamic size array of complex types sub container -->
     <div v-else-if="fullSchema.type === 'array'">
       <v-layout row class="mt-2 mb-1 pr-1">
-        <v-subheader>{{ label }}</v-subheader>
-        <v-btn v-if="modelWrapper[modelKey].length === 0" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
-          <v-icon>add</v-icon>
+        <v-btn v-if="modelWrapper[modelKey].length === 0" fab small icon color="#66639B" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
+          <v-icon color="white">add</v-icon>
         </v-btn>
         <v-spacer/>
         <v-tooltip v-if="fullSchema['icon']" left>
@@ -523,7 +570,7 @@
         <v-layout row wrap>
           <draggable v-model="modelWrapper[modelKey]" :options="{handle:'.handle'}" style="width: 100%;">
             <v-flex v-for="(itemModel, i) in modelWrapper[modelKey]" :key="i">
-              
+
                 <v-layout row wrap>
                   <v-flex xs11>
                     <v-card class="array-card mb-3">
@@ -533,18 +580,19 @@
                             :model-key="i"
                             :parent-key="`${fullKey}.`"
                             :options="options"
-                            :origin="origin"
+                            :apptInterval="apptInterval"
                             @error="e => $emit('error', e)"
                             @change="e => $emit('change', e)"
-                            @input="e => $emit('input', e)" />
+                            @input="e => $emit('input', e)"
+                            @createNew="e => $emit('createNew', e)" />
                              </v-card>
                   </v-flex>
                   <v-flex xs1>
-                    <v-btn fab icon dark small color="red darken-3" @click="sortedData.splice(i, 1); change(); input()">
+                    <v-btn fab icon dark small color="#D96252" @click="modelWrapper[modelKey].splice(i, 1); change(); input()">
                       <v-icon dark>remove</v-icon>
                     </v-btn>
-                    <v-btn v-if="(i+1) === modelWrapper[modelKey].length" icon color="primary" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
-                      <v-icon>add</v-icon>
+                    <v-btn v-if="(i+1) === modelWrapper[modelKey].length" fab small icon color="#66639B" @click="modelWrapper[modelKey].push(fullSchema.items.default || defaultValue(fullSchema.items)); change(); input()">
+                      <v-icon color="white">add</v-icon>
                     </v-btn>
                   </v-flex>
                 </v-layout>
@@ -553,7 +601,6 @@
         </v-layout>
       </v-container>
     </div>
-
     <p v-else-if="options.debug">Unsupported type "{{ fullSchema.type }}" - {{ fullSchema }}</p>
   </v-flex>
 </template>
@@ -564,7 +611,7 @@ const md = require('markdown-it')()
 import _ from 'lodash'
 export default {
   name: 'Property',
-  props: ['schema', 'modelWrapper', 'modelRoot', 'modelKey', 'parentKey', 'required', 'options', 'origin'],
+  props: ['schema', 'modelWrapper', 'modelRoot', 'modelKey', 'parentKey', 'required', 'options', 'apptInterval'],
   data() {
     return {
       ready: false,
@@ -579,9 +626,11 @@ export default {
       menu2: null,
       customSchemaItems: null,
       customItems: null,
-      subModels: {} // a container for objects from root oneOfs and allOfs
+      subModels: {}, // a container for objects from root oneOfs and allOfs
+      dateFormatted: ''
     }
   },
+
   computed: {
     fullSchema() {
       // console.log('Re process full schema')
@@ -658,6 +707,12 @@ export default {
       if (this.oneOfSelect && this.fullSchema.type === 'array') {
         rules.push((val) => (val === undefined || val === null || !val.find(valItem => !this.fullSchema.items.oneOf.find(item => item.const === valItem))) || '')
       }
+      if (this.fullSchema.step && this.apptInterval && (this.fullSchema.type === 'integer' || this.fullSchema.type === 'number' || this.fullSchema.type === 'string')) {
+        rules.push((val) => (val === undefined || val === null || (val%this.apptInterval === 0 || 'Invalid value')))
+      }
+      if (['date', 'date-time'].includes(this.fullSchema.format)) {
+        rules.push((val) => (val === undefined || val === null || (this.moment(val, 'DD/MM/YYYY').isValid()|| 'Invalid Date')))
+      }
       return rules
     },
     fromUrl() {
@@ -714,16 +769,32 @@ export default {
     }
   },
   watch: {
-    q() {
+    q(newVal) {
       // This line prevents reloading the list just after selecting an item in an auto-complete
       if (this.modelWrapper[this.modelKey] && this.modelWrapper[this.modelKey][this.itemTitle] === this.q) return
       this.getSelectItems()
+      if (newVal === null || newVal === '') {
+        this.selectItems = []
+      }
+      if (newVal && newVal.length > 3) {
+        this.loading = true
+      } else {
+        this.loading = false
+      }
+    },
+    modelWrapper : {
+      handler: function (newVal) {
+
+        if (['date', 'date-time'].includes(this.fullSchema.format)) {
+          this.dateFormatted = this.formatDate(this.modelWrapper[this.modelKey])
+        }
+      },
+      deep: true
     },
     fullSchema: {
       handler() {
         if (this.fullSchema && JSON.stringify(this.fullSchema) !== this.lastFullSchema) {
           this.lastFullSchema = JSON.stringify(this.fullSchema)
-          // console.log('Schema changed', JSON.stringify(this.fullSchema))
           this.initFromSchema()
           this.cleanUpExtraProperties()
           this.applySubModels()
@@ -751,26 +822,32 @@ export default {
     }
   },
   methods: {
-    openDialog(array,source) {
-      this.$store.commit('openDialog', {origin: this.origin, form: array, data_source: source})
+    createNew(array, source) {
+      let data = {
+        source: source === undefined ? this.modelKey : source,
+        forms: array,
+        val: this.q
+      }
+      this.$emit("createNew", data)
     },
     updateSelectItems() {
+      // console.log('UPDATE SELECT ITEMS')
       const selectItems = []
 
       if (!this.rawSelectItems) {
         // nothing to do
-      } else if (this.fullSchema.description === 'custom') {
+      } else if (this.fullSchema['x-arrayType'] === 'custom') {
         this.rawSelectItems.forEach(item => selectItems.push(item))
       }else if (
-        (this.fullSchema.description !== 'custom' && this.fullSchema.type === 'object' && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length) ||
-        (this.fullSchema.description !== 'custom' && this.fullSchema.type === 'array' && this.fullSchema.items && this.fullSchema.items.type === 'object' && this.fullSchema.items.properties && Object.keys(this.fullSchema.items.properties).length)
+        (this.fullSchema['x-arrayType'] !== 'custom' && (this.fullSchema['x-type'] === 'object' || this.fullSchema.type === 'object') && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length) ||
+        (this.fullSchema['x-arrayType'] !== 'custom' && this.fullSchema.type === 'array' && this.fullSchema.items && this.fullSchema.items.type === 'object' && this.fullSchema.items.properties && Object.keys(this.fullSchema.items.properties).length)
       ) {
         if (this.fullSchema.properties != null) {
           const keys = this.fullSchema.properties.map(p => p.key)
         } else {
           const keys = this.fullSchema.items.map(p => p.key)
         }
-        
+
         this.rawSelectItems.forEach(item => {
           const filteredItem = {}
           keys.forEach(key => {
@@ -790,7 +867,7 @@ export default {
         return selectItemStr === itemStr
       }
       if (model) {
-        if (this.fullSchema.type === 'array' && this.fullSchema.description !== 'custom') {
+        if (this.fullSchema.type === 'array' && this.fullSchema['x-arrayType'] !== 'custom') {
           model.reverse().forEach(item => {
             if (!selectItems.find(selectItem => matchItem(selectItem, item))) {
               selectItems.push(item)
@@ -805,9 +882,8 @@ export default {
         if (this.fullSchema.mandatory) {
           if(this.customItems.length > 0) {
             this.fullSchema.mandatory.map(fd => {
-              this.customItems.map(ci => { 
+              this.customItems.map(ci => {
                 if (ci.key === fd) {
-                  console.log(ci.key)
                   let count = this.modelWrapper[this.modelKey].filter(mm => mm.key === ci.key)
                   if (count.length === 0){
                     this.saveItem(this.modelWrapper[this.modelKey], ci)
@@ -818,18 +894,21 @@ export default {
           }
         }
       }
-      
+
       // we check for actual differences in order to prevent infinite loops
       if (JSON.stringify(selectItems) !== JSON.stringify(this.selectItems)) {
         this.selectItems = selectItems
       }
     },
     change() {
+      // console.log('CHANGE FROM PLUGIN')
       this.updateSelectItems()
-      this.$emit('change', {key: this.fullKey.replace(/allOf-([0-9]+)\./g, ''), model: this.modelWrapper[this.modelKey]})
+      let source = this.fullSchema['no-data-value'] === undefined ? this.modelKey : this.fullSchema['no-data-value']
+      this.$emit('change', {key: this.fullKey.replace(/allOf-([0-9]+)\./g, ''), model: this.modelWrapper[this.modelKey], form: (this.fullSchema['no-data-form'] ? this.fullSchema['no-data-form'] : false), data_source: source})
     },
     input() {
-      this.$emit('input', {key: this.fullKey.replace(/allOf-([0-9]+)\./g, ''), model: this.modelWrapper[this.modelKey]})
+      let source = this.fullSchema['no-data-value'] === undefined ? this.modelKey : this.fullSchema['no-data-value']
+      this.$emit('input', {key: this.fullKey.replace(/allOf-([0-9]+)\./g, ''), model: this.modelWrapper[this.modelKey], form: (this.fullSchema['no-data-form'] ? this.fullSchema['no-data-form'] : false), data_source: source})
     },
     getDeepKey(obj, key) {
       const keys = key.split('.')
@@ -843,7 +922,7 @@ export default {
       return Object.keys(obj || {}).map(key => ({...obj[key], key}))
     },
     defaultValue(schema) {
-      if (schema.type === 'object' && !schema['x-fromUrl'] && !schema['x-fromData']) return {}
+      if ((schema['x-type'] === 'object' || schema.type === 'object') && !schema['x-fromUrl'] && !schema['x-fromData'] && !schema['x-getData']) return {}
       if (schema.type === 'array') return []
       return null
     },
@@ -867,13 +946,14 @@ export default {
         .catch(err => {
           this.$emit('error', err.message)
           this.loading = false
+          this.rawSelectItems = []
         })
-    },1000),
+    },800),
 
     cleanUpExtraProperties() {
       // console.log('Cleanup extra properties')
       // cleanup extra properties
-      if (this.fullSchema.type === 'object' && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length && this.modelWrapper[this.modelKey]) {
+      if ((this.fullSchema['x-type'] === 'object' || this.fullSchema.type === 'object') && this.fullSchema.properties && Object.keys(this.fullSchema.properties).length && this.modelWrapper[this.modelKey]) {
         Object.keys(this.modelWrapper[this.modelKey]).forEach(key => {
           if (!this.fullSchema.properties.find(p => p.key === key)) {
             // console.log(`Remove key ${this.modelKey}.${key}`)
@@ -904,7 +984,7 @@ export default {
           key:obj.key,
           fields: obj[this.fullSchema['schema']].schema
         }
-      } 
+      }
       if (this.fullSchema['uniqueness']) {
         let duplicate = array.filter(ab => ab[this.fullSchema['x-key']]=== a[this.fullSchema['x-key']])
         if (duplicate.length === 0) {
@@ -946,12 +1026,14 @@ export default {
       }
       // Case of a select based on an array somewhere in the data
       if (this.fullSchema['x-fromData']) {
-        this.$store.dispatch('GET_DATA',this.fullSchema['x-fromData']).then(response => {
+        this.$watch('modelRoot.' + this.fullSchema['x-fromData'], (val) => {
+          this.rawSelectItems = val
+        }, {immediate: true})
+      }
+      if (this.fullSchema['x-getData']) {
+        this.$store.dispatch('GET_DATA', this.fullSchema['x-getData']).then(response => {
           this.rawSelectItems = response
         })
-        // this.$watch('modelRoot.' + this.fullSchema['x-fromData'], (val) => {
-        //   this.rawSelectItems = val
-        // }, {immediate: true})
       }
       // Watch the dynamic parts of the URL used to fill the select field
       if (this.fromUrlKeys) {
@@ -971,7 +1053,7 @@ export default {
       }
 
       // Init subModels for allOf subschemas
-      if (this.fullSchema.type === 'object' && this.fullSchema.allOf) {
+      if ((this.fullSchema['x-type'] === 'object' || this.fullSchema.type === 'object') && this.fullSchema.allOf) {
         this.fullSchema.allOf.forEach((allOf, i) => {
           this.$set(this.subModels, 'allOf-' + i, JSON.parse(JSON.stringify(model)))
         })
@@ -979,7 +1061,7 @@ export default {
 
       // Case of a sub type selection based on a oneOf
       this.currentOneOf = null
-      if (this.fullSchema.type === 'object' && this.fullSchema.oneOf && !this.currentOneOf && this.oneOfConstProp) {
+      if ((this.fullSchema['x-type'] === 'object' || this.fullSchema.type === 'object') && this.fullSchema.oneOf && !this.currentOneOf && this.oneOfConstProp) {
         if (model && model[this.oneOfConstProp.key]) {
           this.currentOneOf = this.fullSchema.oneOf.find(item => item.properties[this.oneOfConstProp.key].const === model[this.oneOfConstProp.key])
         } else if (this.fullSchema.default) {
@@ -995,6 +1077,23 @@ export default {
       }
 
       this.$set(this.modelWrapper, this.modelKey, model)
+    },
+    formatDate (date) {
+      if (!date) return null
+
+      const [year, month, day] = date.split('-')
+      return `${day}/${month}/${year}`
+    },
+    parseDate (date) {
+      if (!date || date.length < 10) return null
+
+      const [day, month, year] = date.split('/')
+      let newDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      if (Date.parse(newDate)) {
+        return newDate
+      } else{
+        return null
+      }
     }
   }
 }
@@ -1056,4 +1155,3 @@ export default {
   height: auto;
 }
 </style>
-

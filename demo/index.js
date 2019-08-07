@@ -6,8 +6,9 @@ import Draggable from 'vuedraggable'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 import Swatches from 'vue-swatches'
+import moment from 'moment'
 import 'vue-swatches/dist/vue-swatches.min.css'
-
+Vue.prototype.moment = moment
 Vue.use(Vuetify)
 Vue.use(VueAxios, axios)
 

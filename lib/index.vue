@@ -1,5 +1,5 @@
 <template lang="html">
-<v-container fluid class="p-1">
+<v-container fluid class="p-0">
 <property
     v-if="!!resolvedSchema"
     :schema="resolvedSchema"
@@ -8,10 +8,11 @@
     :options="fullOptions"
     model-key="root"
     parent-key=""
-    :origin="origin"
+    :apptInterval='apptInterval'
     @error="e => $emit('error', e)"
     @change="e => $emit('change', e)"
     @input="e => $emit('input', e)"
+    @createNew="e => $emit('createNew', e)"
   />
   </v-container>
 </template>
@@ -24,7 +25,7 @@ import colors from './colors'
 export default {
   name: 'VJsonschemaForm',
   components: {Property},
-  props: ['schema', 'options', 'model', 'origin'],
+  props: ['schema', 'options', 'model', 'apptInterval'],
   data() {
     return {modelWrapper: {root: this.model}}
   },
