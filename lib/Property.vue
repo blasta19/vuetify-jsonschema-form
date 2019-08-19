@@ -23,6 +23,7 @@
         :clearable="!required"
         prepend-inner-icon="event"
         @keyup.enter="modelWrapper[modelKey] = parseDate(dateFormatted)"
+        @blur="modelWrapper[modelKey] = parseDate(dateFormatted)"
         v-on="on"
         outline>
 
@@ -627,7 +628,6 @@ export default {
       customSchemaItems: null,
       customItems: null,
       subModels: {}, // a container for objects from root oneOfs and allOfs
-      dateFormatted: ''
     }
   },
 
@@ -766,6 +766,11 @@ export default {
     cleanModel() {
       var byKey = JSON.parse(JSON.stringify(this.modelWrapper[this.modelKey])).slice(0);
       return byKey.map(a => delete a.fields)
+    },
+    dateFormatted() {
+      if (['date', 'date-time'].includes(this.fullSchema.format)) {
+        return this.formatDate(this.modelWrapper[this.modelKey])
+      }
     }
   },
   watch: {
