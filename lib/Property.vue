@@ -16,6 +16,7 @@
         slot="activator"
         maxlength="10"
         v-model="dateFormatted"
+        :value="parseDate(dateFormatted)"
         :label="label"
         :name="fullKey"
         :required="required"
@@ -162,8 +163,8 @@
                     @keyup="modelWrapper[modelKey] = q.length === 0 ? null : modelWrapper[modelKey]"
                     hide-selected
                     outline>
-        <template v-slot:no-data>
-        <v-list-tile v-if="fullSchema['create_new'] && q && !loading && (/\s\w{3,}/.test(q) || (fullSchema['one_word'] && q.length > 3))">
+      <template v-slot:no-data>
+        <v-list-tile v-if="fullSchema['create_new'] && q && selectItems.length == 0 && !loading && (/\s\w{3,}/.test(q) || (fullSchema['one_word'] && q.length > 3))">
           <v-chip
             label
             small
@@ -627,7 +628,8 @@ export default {
       menu2: null,
       customSchemaItems: null,
       customItems: null,
-      subModels: {}, // a container for objects from root oneOfs and allOfs
+      subModels: {}, // a container for objects from root oneOfs and allOfs,
+      dateFormatted: null
     }
   },
 
@@ -767,11 +769,7 @@ export default {
       var byKey = JSON.parse(JSON.stringify(this.modelWrapper[this.modelKey])).slice(0);
       return byKey.map(a => delete a.fields)
     },
-    dateFormatted() {
-      if (['date', 'date-time'].includes(this.fullSchema.format)) {
-        return this.formatDate(this.modelWrapper[this.modelKey])
-      }
-    }
+
   },
   watch: {
     q(newVal) {
@@ -789,7 +787,6 @@ export default {
     },
     modelWrapper : {
       handler: function (newVal) {
-
         if (['date', 'date-time'].includes(this.fullSchema.format)) {
           this.dateFormatted = this.formatDate(this.modelWrapper[this.modelKey])
         }
