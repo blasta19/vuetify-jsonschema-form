@@ -518,7 +518,7 @@
                             :model-root="sortedData"
                             :model-key="index"
                             :parent-key="fullKey + '.'"
-                            :required="sortedData[i].fields.required"
+                            :required="child['required']"
                             :options="options"
                             :apptInterval="apptInterval"
                             @error="e => $emit('error', e)"
@@ -713,7 +713,7 @@ export default {
         rules.push((val) => (val === undefined || val === null || (val%this.apptInterval === 0 || 'Invalid value')))
       }
       if (['date', 'date-time'].includes(this.fullSchema.format)) {
-        rules.push((val) => (val === undefined || val === null || (this.moment(val, 'DD/MM/YYYY').isValid()|| 'Invalid Date')))
+        rules.push((val) => (val === undefined || val === null || (this.moment(val, this.dateFmt()).isValid()|| 'Invalid Date')))
       }
       return rules
     },
@@ -770,6 +770,10 @@ export default {
       return byKey.map(a => delete a.fields)
     },
 
+    isDateValid(fmt, val)
+    {
+      console.log(val, fmt)
+    }
   },
   watch: {
     q(newVal) {
@@ -790,6 +794,13 @@ export default {
         if (['date', 'date-time'].includes(this.fullSchema.format)) {
           this.dateFormatted = this.formatDate(this.modelWrapper[this.modelKey])
         }
+        // map objects outwards
+        // if (this.fullSchema.map) {
+        //   for (const x of Object.keys(this.modelWrapper[this.modelKey]))
+        //   {
+        //     this.modelWrapper[x] = this.modelWrapper[this.modelKey][x]
+        //   }
+        // }
       },
       deep: true
     },
@@ -928,7 +939,7 @@ export default {
       if (schema.type === 'array') return []
       return null
     },
-    getSelectItems: _.debounce(function (){
+    getSelectItems: function (){
       if (!this.options.httpLib) return this.$emit('error', 'No http lib found to perform ajax request')
       let url = this.fullSchema['x-fromUrl'].replace('{q}', this.q || '')
       for (let key of this.fromUrlKeys) {
@@ -937,6 +948,13 @@ export default {
         else url = url.replace(`{${key}}`, this.fromUrlParams[key])
       }
       this.loading = true
+      if (this.q) {
+        _.debounce(() => { this.fireApi(url) },800)
+      } else {
+        this.fireApi(url)
+      }
+    },
+    fireApi (url) {
       this.options.httpLib.get(url)
         .then(res => {
           const body = res.data || res.body
@@ -950,8 +968,7 @@ export default {
           this.loading = false
           this.rawSelectItems = []
         })
-    },800),
-
+    },
     cleanUpExtraProperties() {
       // console.log('Cleanup extra properties')
       // cleanup extra properties
@@ -1033,9 +1050,9 @@ export default {
         }, {immediate: true})
       }
       if (this.fullSchema['x-getData']) {
-        this.$store.dispatch('GET_DATA', this.fullSchema['x-getData']).then(response => {
-          this.rawSelectItems = response
-        })
+        // this.$store.dispatch('GET_DATA', this.fullSchema['x-getData']).then(response => {
+        //   this.rawSelectItems = response
+        // })
       }
       // Watch the dynamic parts of the URL used to fill the select field
       if (this.fromUrlKeys) {
@@ -1071,6 +1088,11 @@ export default {
         }
       }
 
+      // apply date format for date or date-time fields with values
+      if (model !== undefined && ['date', 'date-time'].includes(this.fullSchema.format)) {
+        this.dateFormatted = this.formatDate(this.modelWrapper[this.modelKey])
+      }
+
       // Init subModel for current oneOf
       if (this.currentOneOf) {
         this.$set(this.subModels, 'currentOneOf', JSON.parse(JSON.stringify(model)))
@@ -1083,19 +1105,24 @@ export default {
     formatDate (date) {
       if (!date) return null
 
-      const [year, month, day] = date.split('-')
-      return `${day}/${month}/${year}`
+      return this.moment(date).format(this.dateFmt())
     },
     parseDate (date) {
-      if (!date || date.length < 10) return null
-
-      const [day, month, year] = date.split('/')
-      let newDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-      if (Date.parse(newDate)) {
-        return newDate
-      } else{
-        return null
+      if (date) {
+        var d = this.moment(date, this.dateFmt())
+        if (d.isValid())
+          return d.format('YYYY-MM-DD')
       }
+
+      return null
+    },
+     dateFmt()
+    {
+
+        this.moment.locale(window.navigator.userLanguage || window.navigator.language);
+        return this.moment.localeData().longDateFormat('L');
+
+
     }
   }
 }
