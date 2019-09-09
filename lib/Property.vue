@@ -794,13 +794,13 @@ export default {
         if (['date', 'date-time'].includes(this.fullSchema.format)) {
           this.dateFormatted = this.formatDate(this.modelWrapper[this.modelKey])
         }
-        // map objects outwards
-        // if (this.fullSchema.map) {
-        //   for (const x of Object.keys(this.modelWrapper[this.modelKey]))
-        //   {
-        //     this.modelWrapper[x] = this.modelWrapper[this.modelKey][x]
-        //   }
-        // }
+        if (this.fullSchema.map && this.modelWrapper[this.modelKey])
+        {
+          for (const x of this.fullSchema.map)
+          {
+            this.modelWrapper[x] = this.modelWrapper[this.modelKey][x]
+          }
+        }
       },
       deep: true
     },
@@ -1050,9 +1050,9 @@ export default {
         }, {immediate: true})
       }
       if (this.fullSchema['x-getData']) {
-        // this.$store.dispatch('GET_DATA', this.fullSchema['x-getData']).then(response => {
-        //   this.rawSelectItems = response
-        // })
+        this.$store.dispatch('GET_DATA', this.fullSchema['x-getData']).then(response => {
+          this.rawSelectItems = response
+        })
       }
       // Watch the dynamic parts of the URL used to fill the select field
       if (this.fromUrlKeys) {
